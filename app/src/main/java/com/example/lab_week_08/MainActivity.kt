@@ -11,6 +11,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.work.*
+import com.example.lab_week_08.worker.ThirdWorker
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -71,6 +73,31 @@ class MainActivity : AppCompatActivity() {
             if (info.state.isFinished) {
                 showResult("Second process is done")
                 launchNotificationService() // Start foreground service after second worker
+            }
+        }
+
+
+        // Buat third worker request
+        val thirdRequest = OneTimeWorkRequest.Builder(ThirdWorker::class.java)
+            .setConstraints(networkConstraints)
+            .setInputData(getIdInputData(ThirdWorker.INPUT_DATA_ID, "003"))
+            .build()
+
+        // Jalankan ThirdWorker setelah NotificationService selesai
+        NotificationService.trackingCompletion.observe(this) { channelId ->
+            workManager.enqueue(thirdRequest)
+        }
+
+        // Jalankan SecondNotificationService setelah ThirdWorker selesai
+        workManager.getWorkInfoByIdLiveData(thirdRequest.id).observe(this) { info ->
+            if (info.state.isFinished) {
+                showResult("Third process is done")
+
+                val intent = Intent(this, SecondNotificationService::class.java).apply {
+                    putExtra(SecondNotificationService.EXTRA_ID, "002")
+                }
+
+                ContextCompat.startForegroundService(this, intent)
             }
         }
     }
